@@ -3,7 +3,7 @@
 if [ "$CYOSROOT" ]; then
 	cd "$CYOSROOT"
 
-	mkdir dev proc sys root ".$CYOSROOT"
+	mkdir dev proc sys root
 
 	mkdir home home/user
 	chown user:users home/user

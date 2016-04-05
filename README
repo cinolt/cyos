@@ -1,0 +1,92 @@
+THIS SOFTWARE IS VERY INCOMPLETE
+
+INTRODUCTION
+
+* CYOS is a thin layer of package management for GNU/Linux operating systems with a focus on Git.
+* Some degree of intimacy with the usage of GNU/Linux and Git is assumed.
+* Instructions are provided to build a "core" set of packages and introduce the underlying concepts of CYOS.
+
+BUILDING CORE
+
+* We "bootstrap" our CYOS system with an existing GNU/Linux "host" system.
+* The "host" must have reasonably recent versions of the packages listed in the file "core".
+* We prepare a filesystem to house our CYOS system.
+* We obtain sources for and initialize the "core" set of packages.
+* We build "core" with a "--prefix" that installs into our CYOS filesystem.
+* We chroot into this filesystem.
+* We rebuild "core" with the standard "--prefix=/usr".
+
+- Boot into an existing GNU/Linux system.
+- Prepare a reasonably large (20GiB+) filesystem.
+- Export the shell variable CYOSROOT to the absolute path of this filesystem.
+
+- Run: git clone git://github.com/cinolt/cyos.git "$CYOSROOT/cyos/"
+* This directory houses all files directly related to CYOS.
+
+* Bare Git repositories for all package sources are to be stored in subdirectories of "$CYOSROOT/cyos/git/".
+- Run: mkdir "$CYOSROOT/cyos/git/"
+* If you have this directory backed up from a previous instance of CYOS restore it now.
+
+* URL's for the "core" packages with Git repositories are stored in the file "core-clone".
+- Run: cd "$CYOSROOT/cyos/git/"
+- Run: while read url; do git clone --bare --depth 1 "$url"; done < core-clone
+
+* URL's for the "core" packages with only release tarballs are stored in the file "core-get".
+- Run: wget -i core-get
+* The script "tar.sh" takes release tarballs and initializes Git repositories for them.
+- Run "$CYOSROOT/cyos/tar.sh" *.tar*
+* CYOS does not require these tarballs anymore.
+
+- Run: cd "$CYOSROOT/cyos/diff/"
+- Run: "$CYOSROOT/cyos/apply.sh" *
+
+* Package files are installed into "$CYOSROOT" by "pkgio" stored in "$CYOSROOT/cyos/pkgio/".
+* The script "pkgio.sh" builds and installs "pkgio" into "$CYOSROOT/cyos/".
+- Run: "$CYOSROOT/cyos/pkgio.sh"
+
+* The script "hier.sh" creates the essential directories and symlinks for our CYOS filesystem.
+- Run: ./hier.sh "$CYOSROOT"
+
+* We are now able to build "core".
+* Our first goal is to build binutils+gcc that does not search for libraries and headers that belong to the "host".
+* TODO: must make sure that host gcc uses host ld and as
+* TODO: set PATH
+* We proceed to build a minimal set of packages assumed to exist in a GNU/Linux operating system.
+
+* The script "pkg.sh" builds and installs given packages.
+- Run "pkg.sh < core".
+
+- Run "./pkgio.sh".
+
+* The CYOS filesystem now contains enough packages to rebuild itself when chroot'd into.
+* However the packages expect to be found in "$CYOSROOT/usr", which will appear as "/usr" post-chroot.
+* We rename "$CYOSROOT/usr" to "$CYOSROOT$CYOSROOT/usr" so the original "$CYOSROOT/usr" will appear the same.
+- Run: mkdir "$CYOSROOT$CYOSROOT"
+- Run: mv "$CYOSROOT/usr" "$CYOSROOT$CYOSROOT"
+
+* The script "chroot.sh" does ... TODO
+- Run "./chroot.sh $CYOSROOT".
+* Leave the shell variable CYOSROOT unset.
+- TODO: set PATH
+- TODO: rebuild core
+* The "$CYOSROOT" directory (the variable as was set pre-chroot, but now in post-chroot) is no longer needed.
+
+* This system is now "autonomous" with packages installed in "standard" directories.
+* You should now prepare and build the packages that provide the functionality you need for whatever purpose you have for your new CYOS system.
+
+INTERNALS
+
+* Each Git repository contains one or more "cyos-*" branches which alter the "master" branch as necessary.
+* Every "cyos-*" branch contains the script ".cyos/build.sh" which builds and installs the package into the corresponding subdirectory of "$CYOSROOT/cyos/pkg/".
+
+* The script "diff.sh" produces diff's between each CYOS branch and the "master" branch in each given repository into corresponding subdirectories of "$CYOSROOT/cyos/diff/".
+* The script "apply.sh" applies these diffs into the corresponding repositories.
+* Diff's are only necessary when one needs to apply them to a repository (e.g. when initializing a cloned repository or collaborating with another CYOS user); otherwise the diff's are intrinsically stored into the repositories themselves.
+
+* Repositories with remotes are updated by running "update.sh".
+* Repositories without remotes are updated by manually fetching release tarballs and running "tar-update.sh".
+* The update scripts rebase all "cyos-*" branches; merge conflicts can appear but should be seldom.
+
+POST-CORE CONSIDERATIONS
+
+* For a bootable system you need to install a kernel, an init system, and configure a boot-loader as appropriate.
